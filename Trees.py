@@ -14,83 +14,107 @@ WIDTH = 1200  # ширина игрового окна
 HEIGHT = 700  # высота игрового окна
 FPS = 30  # частота кадров в секунду
 ENERGY_ON_CELL = 13
+FLOOR = HEIGHT * 0.9
 
 cells_woods = set()
 all_sprites = pygame.sprite.Group()
 
 
-class Cell(pygame.sprite.Sprite):
-    def __init__(self, num, x, y, parent, gene=0):
-        self.gene = gene
+class Cell_to_tree(pygame.sprite.Sprite):
+    def __init__(self, num, x, y, genome=None):
         pygame.sprite.Sprite.__init__(self)
-        all_sprites.add(self)
-        parent.cells_sprites.add(self)
+        cells_to_trees_sprites.add(self)
+        cells_to_trees.add(self)
 
         self.num = num
-        self.x = x
-        self.y = y
-        self.parent = parent
 
         self.image = pygame.Surface((SIZE, SIZE))
         self.image.fill(WHITE)
         self.rect = self.image.get_rect()
-        self.rect.x = self.x
-        self.rect.y = self.y
-        cells_woods.add((self.x, self.y))
+        self.rect.x = x
+        self.rect.y = y #Настраиваем спрайты Pygame
+        cells_woods.add((self.rect.x, self.rect.y))
+
+        self.genome = genome
+
+    def fall(self):
+        if self.rect.y + SIZE <= FLOOR: #and (self.rect.x, self.rect.y + SIZE) not in cells_woods:
+            self.rect.y += SIZE
+
+
+class Cell(pygame.sprite.Sprite):
+    def __init__(self, num, x, y, parent, gene=0): #Инициализируем часть дерева (клетку размножения)
+        self.gene = gene
+        pygame.sprite.Sprite.__init__(self)
+        all_sprites.add(self)
+        parent.cells_sprites.add(self) #Добавляем себя во все массивы спрайтов
+
+        self.num = num
+        self.parent = parent #Проставляем обычные значения
+
+        self.image = pygame.Surface((SIZE, SIZE))
+        self.image.fill(WHITE)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y #Настраиваем спрайты Pygame
+        cells_woods.add((self.rect.x, self.rect.y))
 
     def __repr__(self):
-        return f'Клекта размножения {self.num}. X = {self.x}, Y = {self.y}'
+        return f'Клекта размножения {self.num}. X = {self.rect.x}, Y = {self.rect.y}'
 
 
 class Wood(pygame.sprite.Sprite):  # Часть дерева (древесина)
-    def __init__(self, num, x, y, parent):
+    def __init__(self, num, x, y, parent): #Инициализируем часть дерева (древесину (её клетку))
         pygame.sprite.Sprite.__init__(self)
         all_sprites.add(self)
-        parent.woods_sprites.add(self)
+        parent.woods_sprites.add(self) #Добавляем себя во все массивы спрайтов
+
         self.num = num
-        self.x = x
-        self.y = y
-        self.parent = parent
+        self.parent = parent #Проставляем обычные значения
 
         self.image = pygame.Surface((SIZE, SIZE))
         self.image.fill(GREEN)
         self.rect = self.image.get_rect()
-        self.rect.x = self.x
-        self.rect.y = self.y
-        cells_woods.add((self.x, self.y))
+        self.rect.x = x
+        self.rect.y = y #Настраиваем спрайты Pygame
+        cells_woods.add((self.rect.x, self.rect.y))
 
     def __repr__(self):
-        return f'Древесина {self.num}. X = {self.x}, Y = {self.y}'
-    def get_energy(self):  #  получение энергии из клетки
+        return f'Древесина {self.num}. X = {self.rect.x}, Y = {self.rect.y}'
+
+    def get_energy(self):  # получение энергии из клетки
         if len(cells_woods) > 3:
             num = 3
         else:
             num = len(cells_woods) + 1
         top = sorted(cells_woods, key=lambda coords: coords[1], reverse=True)[0:num]
-        if (self.x, self.y) in top:
-            position = top.index((self.x, self.y)) + 1
-            energy = HEIGHT - (self.y / SIZE) * position
+        if (self.rect.x, self.rect.y) in top:
+            position = top.index((self.rect.x, self.rect.y)) + 1
+            energy = HEIGHT - (self.rect.y / SIZE) * position
             return energy
         return 0
 
+
 class Tree:  # Дерево
-    def __init__(self, name, x, y, genome=None):
+    def __init__(self, name, num, x, y, genome=None): #Инициализируем класс деревца
         self.cells_sprites = pygame.sprite.Group()
         self.woods_sprites = pygame.sprite.Group()
         self.name = name
-        self.num = 0
+        self.num = len(trees)
         self.x = x
-        self.y = y
-        if genome is None:
+        self.y = y #Проставляем все нужные значения
+
+        if genome is None: #Если геном не задан, то генерируем свой
             self.genome = [
                 {'left': int(rm.randrange(0, 31)),
                  'up': int(rm.randrange(0, 31)),
                  'right': int(rm.randrange(0, 31)),
                  'down': int(rm.randrange(0, 31))} for _ in range(16)
-            ]
+            ] #Я надеюсь, что не забуду ещё лет 5, как работают списочные выражения, так что не буду комментировать этот момент
         else:
-            self.genome = genome
-        if not rm.randrange(0, 4):
+            self.genome = genome # Иначе берём заданный
+
+        if not rm.randrange(0, 4): #И вносим случаные изменения (мы ж тут эволюцией занимаемся)
             direction = rm.choice(('left', 'up', 'right', 'down'))
             self.genome[rm.randrange(0, 16)][direction] = rm.randrange(0, 31)
         self.cells = {Cell(0, x, y, self)}
@@ -99,44 +123,53 @@ class Tree:  # Дерево
     def __repr__(self):
         return f'Дерево {self.name}. X {self.x}, Y {self.y}'
 
-    def end(self):
+    def end(self): #Метод конца дерева (грустнявка :(((((( )
         print('end')
         self.woods = set()
         for cell in self.cells:
-            cell.parent = None
+            new_cell_to_tree = Cell_to_tree(len(cells_to_trees), cell.rect.x, cell.rect.y, genome=self.genome)
+            cells_to_trees.add(new_cell_to_tree)
+
+        self.cells = set()
         self.woods_sprites = pygame.sprite.Group()
         self.cells_sprites = pygame.sprite.Group()
         trees.remove(self)
 
-
-    def update(self):
+    def update(self):  # рост дерева (хз почему апдейт)
         new_cells = set()
         energy = 0
         for wood in self.woods:
-            cells_woods.add((wood.x, wood.y))
+            cells_woods.add((wood.rect.x, wood.rect.y))
             energy += wood.get_energy()
-        if energy / (len(self.cells) + len(self.woods)) >= ENERGY_ON_CELL:
-            print(f'Энергия - {energy / (len(self.cells) + len(self.woods))}')
+
+        if energy / (len(self.cells) + len(self.woods)) >= ENERGY_ON_CELL: #Если энергии на каждую клетку приходится достаточно, то фигачим
+            print(f'Энергия дерева = {energy / (len(self.cells) + len(self.woods))}')
+
             for cell in self.cells:
-                cells_woods.add((cell.x, cell.y))
+                cells_woods.add((cell.rect.x, cell.rect.y))
 
-                if cell.gene <= 15:
+                if cell.gene <= 15: #Сложный момент кода, который отвечает за, собсна, сам рост дерева. Мне лень объяснять
+                                    #Лучше посмотрите видео, откуда я брал идеи, реализуемые мной:
+                                    #https://www.youtube.com/watch?v=WTh-gNZxTM8
                     for direction, gene in self.genome[cell.gene].items():
-                        if direction == 'left' and (cell.x - SIZE, cell.y) not in cells_woods and cell.x - SIZE > SIZE:
-                            new_cells.add(Cell(len(self.cells), cell.x - SIZE, cell.y, self, gene=gene))
+                        if direction == 'left' and (cell.rect.x - SIZE, cell.rect.y) not in cells_woods and cell.rect.x - SIZE > SIZE:
+                            new_cells.add(Cell(len(self.cells), cell.rect.x - SIZE, cell.rect.y, self, gene=gene))
 
-                        elif direction == 'up' and (cell.x, cell.y - SIZE) not in cells_woods and cell.y - SIZE > SIZE:
-                            new_cells.add(Cell(len(self.cells), cell.x, cell.y - SIZE, self, gene=gene))
+                        elif direction == 'up' and (cell.rect.x, cell.rect.y - SIZE) not in cells_woods and cell.rect.y - SIZE > SIZE:
+                            new_cells.add(Cell(len(self.cells), cell.rect.x, cell.rect.y - SIZE, self, gene=gene))
 
-                        elif direction == 'right' and (cell.x + SIZE, cell.y) not in cells_woods and cell.x + SIZE < WIDTH - SIZE:
-                            new_cells.add(Cell(len(self.cells), cell.x - SIZE, cell.y, self, gene=gene))
+                        elif direction == 'right' and (
+                        cell.rect.x + SIZE, cell.rect.y) not in cells_woods and cell.rect.x + SIZE < WIDTH - SIZE:
+                            new_cells.add(Cell(len(self.cells), cell.rect.x - SIZE, cell.rect.y, self, gene=gene))
 
-                        elif direction == 'down' and (cell.x, cell.y + SIZE) not in cells_woods and cell.y + SIZE < HEIGHT - SIZE:
-                            new_cells.add(Cell(len(self.cells), cell.x, cell.y + SIZE, self, gene=gene))
+                        elif direction == 'down' and (
+                        cell.rect.x, cell.rect.y + SIZE) not in cells_woods and cell.rect.y + SIZE < HEIGHT - SIZE and cell.rect.y + SIZE <= FLOOR:
+                            new_cells.add(Cell(len(self.cells), cell.rect.x, cell.rect.y + SIZE, self, gene=gene))
                 cell.kill()
-                cells_woods.remove((cell.x, cell.y))
+                cells_woods.remove((cell.rect.x, cell.rect.y))
 
-                self.woods.add(Wood(len(self.woods), cell.x, cell.y, self))
+                self.woods.add(Wood(len(self.woods), cell.rect.x, cell.rect.y, self))
+
             self.cells = new_cells
             if len(self.cells) == 0:
                 print('Клетки размножения кончились')
@@ -148,7 +181,6 @@ class Tree:  # Дерево
             print('----')
 
 
-
 pygame.init()  # инициализация всего интерфейса
 pygame.mixer.init()  # для звука
 screen = pygame.display.set_mode((WIDTH, HEIGHT))  # pygame.RESIZABLE)  # окно
@@ -156,21 +188,27 @@ pygame.display.set_caption("Trees")  # имя окна
 clock = pygame.time.Clock()  # Время
 running = True
 
-trees = set()
-trees.add(Tree('fsdkdskfsd', WIDTH / 2, HEIGHT * 0.9))
-trees.add(Tree('первое', 0, 0))
-while running:
-    clock.tick(FPS)
-    for event in pygame.event.get():
+trees = set()  # Множество деревьев
+cells_to_trees = set()  # множество клеток, которые упадут и станут деревьями
+cells_to_trees_sprites = pygame.sprite.Group()
+trees.add(Tree('fsdkdskfsd', len(trees), WIDTH / 2, FLOOR))  # Добавляем первое дерево
+
+while running:  # ОСНОВНОЙ ЦИКЛ
+    clock.tick(FPS)  # Стабилизируем фпс
+    for event in pygame.event.get():  # Проходимся по событиям (нажатиям кнопок и т.д.)
         if event.type == pygame.QUIT:  # проверить закрытие окна
             running = False
 
-    screen.fill(BLUE)
-    for tree in trees.copy():
-        if not tree.name == 'первое':
-            tree.update()
-            tree.woods_sprites.draw(screen)
-            tree.cells_sprites.draw(screen)
-    #all_sprites.draw(screen)
-    pygame.display.flip()
+    screen.fill(BLUE)  # Заливаем всё синим цветом настроения
+    for tree in trees.copy():  # Проходимся по деревьям
+        tree.update()  # Обновляем их
+        tree.woods_sprites.draw(screen)  # И отрисовываем древесину
+        tree.cells_sprites.draw(screen)  # И клетки разможения
+
+    for cells_to_tree in cells_to_trees: #Проходимся по будущим деревьям (падающим клеткам ныне мёртвых деревьев)
+        cells_to_tree.fall() #Вниз их сводим
+    cells_to_trees_sprites.draw(screen) #Отрисовываем всю эту дичь
+
+    #all_sprites.draw()
+    pygame.display.flip()  # Конец отрисовки
 print('The end of life')
