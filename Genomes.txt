@@ -11,3 +11,4 @@
  {'left': 38, 'up': 33, 'right': 51, 'down': 57}, {'left': 39, 'up': 5, 'right': 2, 'down': 16},
  {'left': 2, 'up': 38, 'right': 49, 'down': 7}, {'left': 32, 'up': 8, 'right': 30, 'down': 53},
  {'left': 30, 'up': 9, 'right': 45, 'down': 48}, {'left': 15, 'up': 51, 'right': 9, 'down': 59}]
+пупупу
